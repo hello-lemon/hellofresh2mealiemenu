@@ -1,0 +1,27 @@
+# Configuration pour hellofresh2mealiemenu.py
+# Copie ce fichier vers config.yaml et remplis tes identifiants
+
+# Mode debug (true = verbeux, false = silencieux)
+debug_mode: false
+
+# HelloFresh
+hellofresh_email: "ton_email@example.com"
+hellofresh_password: "ton_mot_de_passe"
+hellofresh_subscription_id: "123456"  # Trouve-le dans l'URL de ton menu HelloFresh
+
+# Mealie
+mealie_url: "https://ton-instance-mealie.fr"
+mealie_token: "ton_token_mealie"  # Créé dans Settings → API Tokens
+
+# Planning
+entry_type: "dinner"  # Type de repas: dinner, lunch, breakfast, side
+matching_threshold: 0.6  # Seuil de matching (0.5 à 0.8) - plus bas = plus permissif
+
+# Jours de la semaine à planifier
+days_to_plan:
+  - monday
+  - tuesday
+  - wednesday
+  - thursday
+  - friday
+  - saturday
