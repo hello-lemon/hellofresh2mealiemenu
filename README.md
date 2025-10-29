@@ -1,6 +1,6 @@
 # HelloFresh to Mealie Menu 🍳
 
-Script Python pour générer automatiquement un planning de repas hebdomadaire dans [Mealie](https://mealie.io/) à partir de ta commande HelloFresh.
+Script Python pour générer automatiquement un planning de repas hebdomadaire dans [Mealie](https://mealie.io/) à partir de vos commandes HelloFresh.
 
 ## 🎯 Fonctionnalités
 
