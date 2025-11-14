@@ -59,7 +59,7 @@ except KeyError as e:
 
 def log(message, level="info"):
     """Afficher un message seulement en mode debug"""
-    if DEBUG_MODE or level == "error":
+    if DEBUG_MODE or level in ["error", "always"]:
         print(message)
 
 # =============================================================================
@@ -70,7 +70,7 @@ def get_current_week_recipes(email, password, sub_id):
     """
     Récupérer les recettes de la commande HelloFresh de la semaine actuelle
     """
-    log("🔐 Connexion à HelloFresh...")
+    log("🔐 Connexion à HelloFresh...", "always")
 
     with sync_playwright() as p:
         # Lancer le navigateur (headless sauf si DEBUG)
@@ -87,7 +87,7 @@ def get_current_week_recipes(email, password, sub_id):
             time.sleep(2)
 
             # Gérer la popup de cookies
-            log("🍪 Gestion des cookies...")
+            log("🍪 Gestion des cookies...", "always")
             try:
                 cookie_selectors = [
                     "button:has-text('Accepter')",
@@ -114,7 +114,7 @@ def get_current_week_recipes(email, password, sub_id):
                 log("   ⚠️  Pas de popup cookies détectée")
 
             # Remplir le formulaire de connexion
-            log("📝 Saisie des identifiants...")
+            log("📝 Saisie des identifiants...", "always")
 
             # Essayer différents sélecteurs pour l'email
             email_selectors = [
@@ -175,7 +175,7 @@ def get_current_week_recipes(email, password, sub_id):
             time.sleep(0.5)
 
             # Cliquer sur le bouton de connexion
-            log("🔑 Tentative de connexion...")
+            log("🔑 Tentative de connexion...", "always")
             submit_selectors = [
                 "button[type='submit']",
                 "button:has-text('Se connecter')",
@@ -205,19 +205,19 @@ def get_current_week_recipes(email, password, sub_id):
                 return []
 
             # Attendre que l'URL change
-            log("⏳ Attente de la connexion...")
+            log("⏳ Attente de la connexion...", "always")
             time.sleep(3)
 
             try:
                 page.wait_for_url("**/my-account/**", timeout=15000)
-                log("✅ Connecté\n")
+                log("✅ Connecté\n", "always")
             except:
                 time.sleep(2)
                 current_url = page.url
                 log(f"   URL actuelle: {current_url}")
 
                 if '/my-account/' in current_url or '/gated/' in current_url:
-                    log("✅ Connecté\n")
+                    log("✅ Connecté\n", "always")
                 else:
                     log("❌ Échec de connexion", "error")
                     log(f"   URL finale: {current_url}", "error")
