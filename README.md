@@ -23,18 +23,28 @@ Script Python pour générer automatiquement un planning de repas hebdomadaire d
 
 ```bash
 # 1. Cloner le repo
-git clone https://github.com/hello-lemon/hellofresh2mealiemenu
+git clone https://github.com/hello-lemon/hellofresh2mealiemenu.git
 cd hellofresh2mealiemenu
 
-# 2. Installer les dépendances
+# 2. Créer un environnement virtuel Python (recommandé)
+python3 -m venv venv
+source venv/bin/activate  # Sur Linux/Mac
+# ou sur Windows : venv\Scripts\activate
+
+# 3. Installer les dépendances Python
 pip3 install playwright requests pyyaml
 
-# 3. Installer Chromium pour Playwright
+# 4. Installer Chromium pour Playwright
 python3 -m playwright install chromium
 
-# 4. (Linux uniquement) Installer les dépendances système
+# 5. (Linux uniquement) Installer les dépendances système
 sudo python3 -m playwright install-deps
+
+# 6. Désactiver le venv (optionnel)
+deactivate
 ```
+
+**Note importante :** Si vous utilisez un environnement virtuel (venv), tous les chemins dans les exemples ci-dessous devront pointer vers `venv/bin/python3` au lieu de juste `python3`.
 
 ## ⚙️ Configuration
 
@@ -88,18 +98,44 @@ days_to_plan:
 
 ### Lancement manuel
 
+**Avec environnement virtuel (recommandé) :**
 ```bash
+cd /chemin/vers/hellofresh2mealiemenu
+/chemin/vers/hellofresh2mealiemenu/venv/bin/python3 hellofresh2mealiemenu.py
+```
+
+**Sans environnement virtuel :**
+```bash
+cd /chemin/vers/hellofresh2mealiemenu
 python3 hellofresh2mealiemenu.py
 ```
 
 **Mode silencieux (par défaut) :**
 ```
+🔐 Connexion à HelloFresh...
+🍪 Gestion des cookies...
+📝 Saisie des identifiants...
+🔑 Tentative de connexion...
+⏳ Attente de la connexion...
+✅ Connecté
+
 ✅ Meal plan créé pour semaine 45 (6 recettes) en 12.3s
 ```
 
-**Mode DEBUG (édite le script et mets `DEBUG_MODE = True`) :**
+**Mode DEBUG (`debug_mode: true` dans config.yaml) :**
 ```
 🔐 Connexion à HelloFresh...
+   Navigation vers la page de login...
+🍪 Gestion des cookies...
+   ✅ Cookies acceptés
+📝 Saisie des identifiants...
+   ✅ Email rempli avec sélecteur: input[type='email']
+   ✅ Mot de passe rempli avec sélecteur: input[type='password']
+🔑 Tentative de connexion...
+   ✅ Bouton cliqué avec sélecteur: button[type='submit']
+⏳ Attente de la connexion...
+✅ Connecté
+
 📋 Récupération des recettes semaine 2025-W45...
 📚 Chargement des recettes Mealie...
 🔗 Matching des recettes...
@@ -115,22 +151,27 @@ Pour lancer automatiquement chaque semaine :
 crontab -e
 
 # Ajouter cette ligne (tous les samedis à 10h)
-0 10 * * 6 cd ~/scripts/hellofresh2mealie && python3 hellofresh2mealiemenu.py >> mealplan.log 2>&1
+# Avec venv (recommandé)
+0 10 * * 6 /opt/hellofresh2mealiemenu/venv/bin/python3 /opt/hellofresh2mealiemenu/hellofresh2mealiemenu.py >> /opt/hellofresh2mealiemenu/mealplan.log 2>&1
+
+# Sans venv
+0 10 * * 6 cd /opt/hellofresh2mealiemenu && python3 hellofresh2mealiemenu.py >> mealplan.log 2>&1
 ```
 
 **Explication :**
 - `0 10 * * 6` = Samedi à 10h00
 - Le script génère le planning pour le **lundi suivant**
 - Les logs sont sauvegardés dans `mealplan.log`
+- **Important :** Utilise les chemins absolus dans les cron jobs (pas de `~` ou chemins relatifs)
 
 ### Autres exemples de timing cron
 
 ```bash
 # Tous les dimanches à 20h
-0 20 * * 0 cd ~/scripts/hellofresh2mealie && python3 hellofresh2mealiemenu.py >> mealplan.log 2>&1
+0 20 * * 0 /opt/hellofresh2mealiemenu/venv/bin/python3 /opt/hellofresh2mealiemenu/hellofresh2mealiemenu.py >> /opt/hellofresh2mealiemenu/mealplan.log 2>&1
 
 # Tous les vendredis à 18h
-0 18 * * 5 cd ~/scripts/hellofresh2mealie && python3 hellofresh2mealiemenu.py >> mealplan.log 2>&1
+0 18 * * 5 /opt/hellofresh2mealiemenu/venv/bin/python3 /opt/hellofresh2mealiemenu/hellofresh2mealiemenu.py >> /opt/hellofresh2mealiemenu/mealplan.log 2>&1
 ```
 
 ## 🔧 Personnalisation
@@ -213,14 +254,38 @@ python3 -m playwright install chromium
 - Lance le script depuis ton ordinateur personnel plutôt qu'un serveur distant
 - Ou utilise un VPN/proxy résidentiel
 
+## 🔄 Mise à jour
+
+Pour mettre à jour vers la dernière version :
+
+```bash
+cd /opt/hellofresh2mealiemenu
+
+# Sauvegarder votre config.yaml
+cp config.yaml config.yaml.bak
+
+# Mettre à jour le code
+git pull origin main
+
+# Restaurer votre config
+cp config.yaml.bak config.yaml
+
+# Mettre à jour les dépendances (si nécessaire)
+venv/bin/pip3 install --upgrade playwright requests pyyaml
+venv/bin/python3 -m playwright install chromium
+```
+
 ## 📊 Logs
 
 ```bash
 # Voir les derniers logs
-tail -20 mealplan.log
+tail -20 /opt/hellofresh2mealiemenu/mealplan.log
 
 # Suivre les logs en temps réel
-tail -f mealplan.log
+tail -f /opt/hellofresh2mealiemenu/mealplan.log
+
+# Voir uniquement les erreurs
+grep "❌" /opt/hellofresh2mealiemenu/mealplan.log
 ```
 
 ## 🤝 Contribution
