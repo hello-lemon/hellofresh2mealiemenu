@@ -74,17 +74,59 @@ def get_current_week_recipes(email, password, sub_id):
 
     with sync_playwright() as p:
         # Lancer le navigateur (headless sauf si DEBUG)
-        browser = p.chromium.launch(headless=not DEBUG_MODE)
-        context = browser.new_context(
-            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        browser = p.chromium.launch(
+            headless=not DEBUG_MODE,
+            args=[
+                '--disable-blink-features=AutomationControlled',
+                '--disable-dev-shm-usage',
+                '--no-sandbox'
+            ]
         )
+
+        # Contexte avec paramètres anti-détection
+        context = browser.new_context(
+            user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            viewport={'width': 1920, 'height': 1080},
+            locale='fr-FR',
+            timezone_id='Europe/Paris',
+            permissions=['geolocation']
+        )
+
+        # Masquer les indicateurs de webdriver
+        context.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined
+            });
+
+            // Masquer les propriétés Playwright
+            delete window.playwright;
+            delete window.__playwright;
+            delete window.__pw_manual;
+
+            // Ajouter des propriétés de navigateur réel
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => [1, 2, 3, 4, 5]
+            });
+
+            Object.defineProperty(navigator, 'languages', {
+                get: () => ['fr-FR', 'fr', 'en-US', 'en']
+            });
+
+            const originalQuery = window.navigator.permissions.query;
+            window.navigator.permissions.query = (parameters) => (
+                parameters.name === 'notifications' ?
+                    Promise.resolve({ state: Notification.permission }) :
+                    originalQuery(parameters)
+            );
+        """)
+
         page = context.new_page()
 
         try:
             # Aller sur la page de login
             log("   Navigation vers la page de login...")
             page.goto("https://www.hellofresh.fr/login", wait_until="domcontentloaded", timeout=60000)
-            time.sleep(2)
+            time.sleep(random.uniform(2, 4))  # Délai aléatoire 2-4 secondes
 
             # Gérer la popup de cookies
             log("🍪 Gestion des cookies...", "always")
@@ -106,7 +148,7 @@ def get_current_week_recipes(email, password, sub_id):
                         if page.locator(selector).count() > 0:
                             page.click(selector, timeout=2000)
                             log("   ✅ Cookies acceptés")
-                            time.sleep(1)
+                            time.sleep(random.uniform(1, 2))  # Délai aléatoire
                             break
                     except:
                         continue
@@ -143,7 +185,7 @@ def get_current_week_recipes(email, password, sub_id):
                 log(f"   📸 Capture: {screenshot_path}", "error")
                 return []
 
-            time.sleep(0.5)
+            time.sleep(random.uniform(0.5, 1.5))  # Délai aléatoire entre email et password
 
             # Essayer différents sélecteurs pour le mot de passe
             password_selectors = [
@@ -172,7 +214,7 @@ def get_current_week_recipes(email, password, sub_id):
                 log(f"   📸 Capture: {screenshot_path}", "error")
                 return []
 
-            time.sleep(0.5)
+            time.sleep(random.uniform(0.5, 1.5))  # Délai aléatoire avant de cliquer
 
             # Cliquer sur le bouton de connexion
             log("🔑 Tentative de connexion...", "always")
@@ -206,7 +248,7 @@ def get_current_week_recipes(email, password, sub_id):
 
             # Attendre que l'URL change
             log("⏳ Attente de la connexion...", "always")
-            time.sleep(3)
+            time.sleep(random.uniform(3, 5))  # Délai aléatoire plus long
 
             try:
                 page.wait_for_url("**/my-account/**", timeout=15000)
