@@ -4,10 +4,18 @@
 # Mode debug (true = verbeux, false = silencieux)
 debug_mode: false
 
-# HelloFresh
-hellofresh_email: "ton_email@example.com"
-hellofresh_password: "ton_mot_de_passe"
-hellofresh_subscription_id: "123456"  # Trouve-le dans l'URL de ton menu HelloFresh
+# ============================================================================
+# HELLOFRESH
+# ============================================================================
+
+# Lien magique reçu par email HelloFresh
+# Tu peux le mettre ici OU le passer en paramètre avec ./run.sh -m "lien"
+# Note: Le lien expire après quelques heures
+# hellofresh_magic_link: "https://click.bnlx.hellofresh.link/?qs=..."
+
+# ID de souscription HelloFresh (obligatoire)
+# Trouve-le dans l'URL : https://www.hellofresh.fr/my-account/deliveries/menu?subscriptionId=123456
+hellofresh_subscription_id: "123456"
 
 # Mealie
 mealie_url: "https://ton-instance-mealie.fr"

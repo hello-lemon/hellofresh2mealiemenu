@@ -50,8 +50,8 @@ nano config.yaml
 
 ```yaml
 # HelloFresh
-hellofresh_email: "ton_email@example.com"
-hellofresh_password: "ton_mot_de_passe"
+# Note: Le lien magique peut aussi être passé en paramètre avec -m
+hellofresh_magic_link: "https://click.bnlx.hellofresh.link/?qs=..."
 hellofresh_subscription_id: "123456"
 
 # Mealie
@@ -72,11 +72,17 @@ days_to_plan:
   - saturday
 ```
 
-### Comment trouver ton `subscription_id` HelloFresh ?
+### Comment trouver les informations requises ?
 
-1. Va sur https://www.hellofresh.fr/my-account/deliveries/menu
-2. Regarde l'URL : `?subscriptionId=123456`
-3. Le nombre après `subscriptionId=` c'est ton ID
+**1. Magic Link HelloFresh**
+- Cherche dans tes emails HelloFresh un bouton "Se connecter" ou "Connexion"
+- Copie l'URL du bouton (généralement `https://click.bnlx.hellofresh.link/...`)
+- ⚠️ Le lien expire après quelques heures
+
+**2. Subscription ID**
+- Va sur https://www.hellofresh.fr/my-account/deliveries/menu
+- Regarde l'URL : `?subscriptionId=123456`
+- Le nombre après `subscriptionId=` c'est ton ID
 
 ### Comment créer un token Mealie ?
 
@@ -86,18 +92,48 @@ days_to_plan:
 
 ## 📝 Utilisation
 
-### Lancement manuel
+### ⚠️ Important : Authentification avec Magic Link
+
+HelloFresh envoie régulièrement des liens magiques par email pour se connecter sans mot de passe. C'est la **seule méthode** supportée car l'authentification classique est bloquée par Cloudflare.
+
+**Option 1 : Passer le lien en paramètre (recommandé)**
 
 ```bash
-python3 hellofresh2mealiemenu.py
+# Avec le wrapper (gestion auto du venv) - RECOMMANDÉ
+./run.sh -m "https://click.bnlx.hellofresh.link/?qs=..."
+
+# OU directement avec Python (après avoir installé les dépendances)
+python3 hellofresh2mealiemenu.py -m "https://click.bnlx.hellofresh.link/?qs=..."
 ```
+
+> 💡 **N'oublie pas les guillemets** autour de l'URL !
+
+**Option 2 : Le mettre dans config.yaml**
+
+```yaml
+hellofresh_magic_link: "https://click.bnlx.hellofresh.link/?qs=..."
+```
+
+Puis lancer sans paramètre :
+
+```bash
+./run.sh
+```
+
+**Comment obtenir le magic link ?**
+
+1. Cherche dans tes emails HelloFresh un bouton "Se connecter" ou "Connexion"
+2. **Clic droit** sur le bouton → **Copier l'adresse du lien**
+3. Utilise ce lien avec l'option `-m` ou dans `config.yaml`
+
+> ⚠️ **Note** : Le magic link expire après quelques heures. Tu devras en récupérer un nouveau à chaque utilisation.
 
 **Mode silencieux (par défaut) :**
 ```
 ✅ Meal plan créé pour semaine 45 (6 recettes) en 12.3s
 ```
 
-**Mode DEBUG (édite le script et mets `DEBUG_MODE = True`) :**
+**Mode DEBUG (édite `config.yaml` et mets `debug_mode: true`) :**
 ```
 🔐 Connexion à HelloFresh...
 📋 Récupération des recettes semaine 2025-W45...

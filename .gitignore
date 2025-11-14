@@ -1,0 +1,14 @@
+# Configuration avec secrets
+config.yaml
+
+# Virtual environment
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Screenshots de debug
+*.png
+
+# Logs
+*.log

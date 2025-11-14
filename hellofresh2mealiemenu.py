@@ -11,6 +11,8 @@ import json
 import random
 import yaml
 import os
+import sys
+import argparse
 from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 import time
@@ -27,19 +29,18 @@ CONFIG_PATH = os.path.join(SCRIPT_DIR, "config.yaml")
 try:
     with open(CONFIG_PATH, 'r') as f:
         config = yaml.safe_load(f)
-    
+
     # Mode debug
     DEBUG_MODE = config.get('debug_mode', False)
-    
+
     # HelloFresh
-    HELLOFRESH_EMAIL = config['hellofresh_email']
-    HELLOFRESH_PASSWORD = config['hellofresh_password']
+    HELLOFRESH_MAGIC_LINK = config.get('hellofresh_magic_link')
     SUBSCRIPTION_ID = config['hellofresh_subscription_id']
-    
+
     # Mealie
     MEALIE_URL = config['mealie_url']
     MEALIE_TOKEN = config['mealie_token']
-    
+
     # Planning
     ENTRY_TYPE = config.get('entry_type', 'dinner')
     MATCHING_THRESHOLD = config.get('matching_threshold', 0.6)
@@ -66,11 +67,17 @@ def log(message, level="info"):
 # FONCTIONS HELLOFRESH
 # =============================================================================
 
-def get_current_week_recipes(email, password, sub_id):
+def get_current_week_recipes_with_magic_link(magic_link, sub_id, week_offset=0):
     """
-    Récupérer les recettes de la commande HelloFresh de la semaine actuelle
+    Récupérer les recettes de la commande HelloFresh
+    en utilisant un lien magique (magic link) reçu par email
+
+    Args:
+        magic_link: URL du magic link HelloFresh
+        sub_id: ID de souscription
+        week_offset: Décalage en semaines (0=semaine actuelle, 1=semaine prochaine, -1=semaine dernière)
     """
-    log("🔐 Connexion à HelloFresh...", "always")
+    log("🔐 Connexion à HelloFresh via magic link...", "always")
 
     with sync_playwright() as p:
         # Lancer le navigateur (headless sauf si DEBUG)
@@ -81,189 +88,88 @@ def get_current_week_recipes(email, password, sub_id):
         page = context.new_page()
 
         try:
-            # Aller sur la page de login
-            log("   Navigation vers la page de login...")
-            page.goto("https://www.hellofresh.fr/login", wait_until="domcontentloaded", timeout=60000)
-            time.sleep(2)
-
-            # Gérer la popup de cookies
-            log("🍪 Gestion des cookies...", "always")
-            try:
-                cookie_selectors = [
-                    "button:has-text('Accepter')",
-                    "button:has-text('Tout accepter')",
-                    "button:has-text('Accept all')",
-                    "button:has-text('Accept')",
-                    "[data-test-id*='accept']",
-                    "[id*='accept-cookies']",
-                    "[id*='onetrust-accept']",
-                    "button[class*='cookie'][class*='accept']",
-                    "#onetrust-accept-btn-handler"
-                ]
-
-                for selector in cookie_selectors:
-                    try:
-                        if page.locator(selector).count() > 0:
-                            page.click(selector, timeout=2000)
-                            log("   ✅ Cookies acceptés")
-                            time.sleep(1)
-                            break
-                    except:
-                        continue
-            except:
-                log("   ⚠️  Pas de popup cookies détectée")
-
-            # Remplir le formulaire de connexion
-            log("📝 Saisie des identifiants...", "always")
-
-            # Essayer différents sélecteurs pour l'email
-            email_selectors = [
-                "input[type='email']",
-                "input[name='email']",
-                "input[id*='email']",
-                "input[data-test-id*='email']"
-            ]
-
-            email_filled = False
-            for selector in email_selectors:
-                try:
-                    if page.locator(selector).count() > 0:
-                        page.fill(selector, email, timeout=5000)
-                        log(f"   ✅ Email rempli avec sélecteur: {selector}")
-                        email_filled = True
-                        break
-                except Exception as e:
-                    log(f"   ⚠️  Échec sélecteur email {selector}: {str(e)[:50]}")
-                    continue
-
-            if not email_filled:
-                log("   ❌ Impossible de trouver le champ email", "error")
-                screenshot_path = os.path.join(SCRIPT_DIR, "hellofresh_no_email_field.png")
-                page.screenshot(path=screenshot_path)
-                log(f"   📸 Capture: {screenshot_path}", "error")
-                return []
-
-            time.sleep(0.5)
-
-            # Essayer différents sélecteurs pour le mot de passe
-            password_selectors = [
-                "input[type='password']",
-                "input[name='password']",
-                "input[id*='password']",
-                "input[data-test-id*='password']"
-            ]
-
-            password_filled = False
-            for selector in password_selectors:
-                try:
-                    if page.locator(selector).count() > 0:
-                        page.fill(selector, password, timeout=5000)
-                        log(f"   ✅ Mot de passe rempli avec sélecteur: {selector}")
-                        password_filled = True
-                        break
-                except Exception as e:
-                    log(f"   ⚠️  Échec sélecteur password {selector}: {str(e)[:50]}")
-                    continue
-
-            if not password_filled:
-                log("   ❌ Impossible de trouver le champ mot de passe", "error")
-                screenshot_path = os.path.join(SCRIPT_DIR, "hellofresh_no_password_field.png")
-                page.screenshot(path=screenshot_path)
-                log(f"   📸 Capture: {screenshot_path}", "error")
-                return []
-
-            time.sleep(0.5)
-
-            # Cliquer sur le bouton de connexion
-            log("🔑 Tentative de connexion...", "always")
-            submit_selectors = [
-                "button[type='submit']",
-                "button:has-text('Se connecter')",
-                "button:has-text('Connexion')",
-                "button:has-text('Log in')",
-                "button[data-test-id*='submit']",
-                "input[type='submit']"
-            ]
-
-            button_clicked = False
-            for selector in submit_selectors:
-                try:
-                    if page.locator(selector).count() > 0:
-                        page.click(selector, timeout=5000)
-                        log(f"   ✅ Bouton cliqué avec sélecteur: {selector}")
-                        button_clicked = True
-                        break
-                except Exception as e:
-                    log(f"   ⚠️  Échec sélecteur bouton {selector}: {str(e)[:50]}")
-                    continue
-
-            if not button_clicked:
-                log("   ❌ Impossible de trouver le bouton de connexion", "error")
-                screenshot_path = os.path.join(SCRIPT_DIR, "hellofresh_no_submit_button.png")
-                page.screenshot(path=screenshot_path)
-                log(f"   📸 Capture: {screenshot_path}", "error")
-                return []
-
-            # Attendre que l'URL change
-            log("⏳ Attente de la connexion...", "always")
+            # Aller directement sur le lien magique
+            log("   Navigation vers le lien magique...")
+            page.goto(magic_link, wait_until="domcontentloaded", timeout=60000)
             time.sleep(3)
 
+            # Screenshot 1: Après clic sur magic link
+            screenshot_path = os.path.join(SCRIPT_DIR, "debug_step1_after_magic_link.png")
+            page.screenshot(path=screenshot_path, full_page=True)
+            log(f"   Screenshot 1 sauvegardé: {screenshot_path}", "always")
+            log(f"   URL après magic link: {page.url}", "always")
+
+            # Le lien magique devrait nous authentifier et rediriger vers le menu
+            log("   Authentification en cours...")
+
+            # Attendre d'être sur la page du compte
             try:
                 page.wait_for_url("**/my-account/**", timeout=15000)
-                log("✅ Connecté\n", "always")
-            except:
-                time.sleep(2)
-                current_url = page.url
-                log(f"   URL actuelle: {current_url}")
+                log("   ✅ Authentification réussie")
 
-                if '/my-account/' in current_url or '/gated/' in current_url:
-                    log("✅ Connecté\n", "always")
-                else:
-                    log("❌ Échec de connexion", "error")
-                    log(f"   URL finale: {current_url}", "error")
-                    screenshot_path = os.path.join(SCRIPT_DIR, "hellofresh_login_failed.png")
-                    page.screenshot(path=screenshot_path)
-                    log(f"   📸 Capture: {screenshot_path}", "error")
-                    return []
-            
-            # Récupérer les recettes de la SEMAINE ACTUELLE
-            current_week = datetime.now()
-            year = current_week.isocalendar()[0]
-            week_num = current_week.isocalendar()[1]
+                # Screenshot 2: Après authentification
+                screenshot_path = os.path.join(SCRIPT_DIR, "debug_step2_after_auth.png")
+                page.screenshot(path=screenshot_path, full_page=True)
+                log(f"   Screenshot 2 sauvegardé: {screenshot_path}", "always")
+            except:
+                # Vérifier si on est déjà sur la bonne page
+                if '/my-account/' not in page.url:
+                    log("   ⚠️  Redirection inattendue, tentative de navigation vers le menu...", "always")
+                    screenshot_path = os.path.join(SCRIPT_DIR, "debug_step2_redirect_issue.png")
+                    page.screenshot(path=screenshot_path, full_page=True)
+                    log(f"   Screenshot 2 (erreur) sauvegardé: {screenshot_path}", "always")
+
+            # Calculer la semaine cible (actuelle + offset)
+            target_date = datetime.now() + timedelta(weeks=week_offset)
+            year = target_date.isocalendar()[0]
+            week_num = target_date.isocalendar()[1]
             week = f"{year}-W{week_num:02d}"
-            
-            log(f"📋 Récupération des recettes semaine {week}...")
-            
+
+            week_label = "actuelle" if week_offset == 0 else f"{'prochaine' if week_offset == 1 else f'+{week_offset}'}" if week_offset > 0 else f"{week_offset}"
+            log(f"📋 Récupération des recettes semaine {week_label} ({week})...", "always")
+
             # Aller sur le menu
             menu_url = f"https://www.hellofresh.fr/my-account/deliveries/menu?week={week}&subscriptionId={sub_id}&locale=fr-FR"
+            log(f"   Navigation vers: {menu_url}", "always")
             page.goto(menu_url, wait_until="domcontentloaded", timeout=60000)
             time.sleep(3)
-            
+
+            # Screenshot 3: Page du menu
+            screenshot_path = os.path.join(SCRIPT_DIR, "debug_step3_menu_page.png")
+            page.screenshot(path=screenshot_path, full_page=True)
+            log(f"   Screenshot 3 sauvegardé: {screenshot_path}", "always")
+            log(f"   URL actuelle: {page.url}", "always")
+
             # Extraire les titres des recettes
             titles = []
             weekly_menu_section = page.query_selector("#weekly-menu")
-            
+
             if not weekly_menu_section:
                 log("❌ Section #weekly-menu non trouvée", "error")
+                # Prendre un screenshot pour debug
+                screenshot_path = os.path.join(SCRIPT_DIR, "hellofresh_debug.png")
+                page.screenshot(path=screenshot_path, full_page=True)
+                log(f"   Screenshot sauvegardé: {screenshot_path}", "error")
+                log(f"   URL actuelle: {page.url}", "error")
                 return []
-            
+
             recipe_cards = weekly_menu_section.query_selector_all("[data-recipe-id]")
             log(f"   Trouvé {len(recipe_cards)} recettes")
-            
+
             for card in recipe_cards:
                 try:
                     # Ignorer les recettes offertes
                     is_free = card.query_selector("span:has-text('Offert')")
                     if is_free:
                         continue
-                    
+
                     # Récupérer le titre principal
                     title_elem = card.query_selector("[data-test-id='product-name']")
                     if not title_elem:
                         continue
-                    
+
                     title = title_elem.inner_text().strip()
-                    
+
                     # Récupérer le sous-titre
                     subtitle_elem = card.query_selector("[data-test-id='product-headline-screen-reader-text']")
                     if subtitle_elem:
@@ -271,28 +177,28 @@ def get_current_week_recipes(email, password, sub_id):
                         full_title = f"{title} {subtitle}"
                     else:
                         full_title = title
-                    
+
                     if full_title:
                         titles.append(full_title)
                 except:
                     continue
-            
+
             log(f"✅ {len(titles)} recettes trouvées\n")
-            
+
             return titles
-            
+
         except Exception as e:
             log(f"❌ Erreur: {e}", "error")
             try:
                 screenshot_path = os.path.join(SCRIPT_DIR, "hellofresh_error.png")
                 page.screenshot(path=screenshot_path)
-                log(f"📸 Capture d'écran: {screenshot_path}", "error")
+                log(f"   Screenshot sauvegardé: {screenshot_path}", "error")
             except:
                 pass
             return []
-            
         finally:
             browser.close()
+
 
 # =============================================================================
 # FONCTIONS MEALIE
@@ -455,16 +361,29 @@ def create_meal_plan(recipe_ids, start_date):
 # FONCTION PRINCIPALE
 # =============================================================================
 
-def main():
+def main(magic_link_arg=None, week_offset=0):
     start_time = time.time()
-    
+
     if DEBUG_MODE:
         print("="*80)
         print("🍳 Génération automatique du meal plan Mealie")
         print("="*80 + "\n")
-    
+
     # Récupérer les recettes HelloFresh
-    hf_recipes = get_current_week_recipes(HELLOFRESH_EMAIL, HELLOFRESH_PASSWORD, SUBSCRIPTION_ID)
+    # Priorité 1: Argument de ligne de commande
+    # Priorité 2: Config file
+    magic_link = magic_link_arg or HELLOFRESH_MAGIC_LINK
+
+    if not magic_link:
+        print("❌ Erreur: Vous devez fournir un magic link")
+        print("\nUsage:")
+        print('  ./run.sh -m "https://click.bnlx.hellofresh.link/..." -w 1')
+        print('  OU')
+        print('  python3 hellofresh2mealiemenu.py -m "https://click.bnlx.hellofresh.link/..." -w 1')
+        print('\nOu ajoutez hellofresh_magic_link dans config.yaml')
+        return
+
+    hf_recipes = get_current_week_recipes_with_magic_link(magic_link, SUBSCRIPTION_ID, week_offset)
     
     if not hf_recipes:
         print("❌ Aucune recette HelloFresh trouvée")
@@ -533,8 +452,43 @@ def main():
         print(f"✅ Meal plan créé pour semaine {next_monday.isocalendar()[1]} ({created} recettes) en {elapsed:.1f}s")
 
 if __name__ == "__main__":
+    # Gestion des arguments de ligne de commande
+    parser = argparse.ArgumentParser(
+        description='Génère automatiquement un meal plan dans Mealie à partir des recettes HelloFresh',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''
+Exemples:
+  # Semaine actuelle
+  ./run.sh -m "https://click.bnlx.hellofresh.link/..."
+
+  # Semaine prochaine
+  ./run.sh -m "https://click.bnlx.hellofresh.link/..." -w 1
+
+  # Dans 2 semaines
+  ./run.sh -m "https://click.bnlx.hellofresh.link/..." -w 2
+
+  # Utiliser le magic link du fichier config.yaml
+  ./run.sh
+        '''
+    )
+
+    parser.add_argument(
+        '-m', '--magic-link',
+        type=str,
+        help='Lien magique HelloFresh reçu par email'
+    )
+
+    parser.add_argument(
+        '-w', '--week',
+        type=int,
+        default=0,
+        help='Décalage de semaines (0=actuelle, 1=prochaine, etc.)'
+    )
+
+    args = parser.parse_args()
+
     try:
-        main()
+        main(magic_link_arg=args.magic_link, week_offset=args.week)
     except KeyboardInterrupt:
         print("\n⚠️  Interrompu")
     except Exception as e:
