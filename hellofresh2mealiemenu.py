@@ -73,23 +73,17 @@ def get_current_week_recipes(email, password, sub_id):
     log("🔐 Connexion à HelloFresh...", "always")
 
     with sync_playwright() as p:
-        # Lancer le navigateur (headless sauf si DEBUG)
-        browser = p.chromium.launch(
-            headless=not DEBUG_MODE,
-            args=[
-                '--disable-blink-features=AutomationControlled',
-                '--disable-dev-shm-usage',
-                '--no-sandbox'
-            ]
+        # Lancer le navigateur (Firefox au lieu de Chromium pour éviter détection)
+        browser = p.firefox.launch(
+            headless=not DEBUG_MODE
         )
 
         # Contexte avec paramètres anti-détection
         context = browser.new_context(
-            user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121.0',
             viewport={'width': 1920, 'height': 1080},
             locale='fr-FR',
-            timezone_id='Europe/Paris',
-            permissions=['geolocation']
+            timezone_id='Europe/Paris'
         )
 
         # Masquer les indicateurs de webdriver
