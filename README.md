@@ -178,6 +178,16 @@ matching_threshold: 0.7  # Valeur entre 0.5 et 0.8
 
 ## ⚠️ Troubleshooting
 
+**Problème : Échec de connexion HelloFresh**
+- Active le mode debug dans `config.yaml` : `debug_mode: true`
+- Le script créera des captures d'écran pour diagnostiquer le problème :
+  - `hellofresh_no_email_field.png` - Le champ email n'a pas été trouvé
+  - `hellofresh_no_password_field.png` - Le champ mot de passe n'a pas été trouvé
+  - `hellofresh_no_submit_button.png` - Le bouton de connexion n'a pas été trouvé
+  - `hellofresh_login_failed.png` - La connexion a échoué (identifiants invalides ou changement du site)
+- Vérifie tes identifiants dans `config.yaml`
+- **Important** : HelloFresh peut bloquer les serveurs/VPS avec Cloudflare. Lance plutôt le script depuis ton ordinateur personnel.
+
 **Problème : Aucune recette HelloFresh trouvée**
 - Vérifie tes identifiants dans `config.yaml`
 - Vérifie ton `subscription_id`

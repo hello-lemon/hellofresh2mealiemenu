@@ -59,7 +59,7 @@ except KeyError as e:
 
 def log(message, level="info"):
     """Afficher un message seulement en mode debug"""
-    if DEBUG_MODE or level == "error":
+    if DEBUG_MODE or level in ["error", "always"]:
         print(message)
 
 # =============================================================================
@@ -70,65 +70,160 @@ def get_current_week_recipes(email, password, sub_id):
     """
     Récupérer les recettes de la commande HelloFresh de la semaine actuelle
     """
-    log("🔐 Connexion à HelloFresh...")
-    
+    log("🔐 Connexion à HelloFresh...", "always")
+
     with sync_playwright() as p:
         # Lancer le navigateur (headless sauf si DEBUG)
         browser = p.chromium.launch(headless=not DEBUG_MODE)
         context = browser.new_context(
-            user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         )
         page = context.new_page()
-        
+
         try:
             # Aller sur la page de login
+            log("   Navigation vers la page de login...")
             page.goto("https://www.hellofresh.fr/login", wait_until="domcontentloaded", timeout=60000)
-            
+            time.sleep(2)
+
             # Gérer la popup de cookies
-            log("🍪 Gestion des cookies...")
+            log("🍪 Gestion des cookies...", "always")
             try:
                 cookie_selectors = [
                     "button:has-text('Accepter')",
                     "button:has-text('Tout accepter')",
+                    "button:has-text('Accept all')",
                     "button:has-text('Accept')",
                     "[data-test-id*='accept']",
                     "[id*='accept-cookies']",
-                    "button[class*='cookie'][class*='accept']"
+                    "[id*='onetrust-accept']",
+                    "button[class*='cookie'][class*='accept']",
+                    "#onetrust-accept-btn-handler"
                 ]
-                
+
                 for selector in cookie_selectors:
                     try:
-                        page.click(selector, timeout=3000)
-                        log("   ✅ Cookies acceptés")
-                        break
+                        if page.locator(selector).count() > 0:
+                            page.click(selector, timeout=2000)
+                            log("   ✅ Cookies acceptés")
+                            time.sleep(1)
+                            break
                     except:
                         continue
-                
-                time.sleep(1)
             except:
-                log("   ⚠️  Pas de popup cookies")
-            
+                log("   ⚠️  Pas de popup cookies détectée")
+
             # Remplir le formulaire de connexion
-            log("📝 Saisie des identifiants...")
-            page.fill("input[type='email']", email)
-            page.fill("input[type='password']", password)
-            
+            log("📝 Saisie des identifiants...", "always")
+
+            # Essayer différents sélecteurs pour l'email
+            email_selectors = [
+                "input[type='email']",
+                "input[name='email']",
+                "input[id*='email']",
+                "input[data-test-id*='email']"
+            ]
+
+            email_filled = False
+            for selector in email_selectors:
+                try:
+                    if page.locator(selector).count() > 0:
+                        page.fill(selector, email, timeout=5000)
+                        log(f"   ✅ Email rempli avec sélecteur: {selector}")
+                        email_filled = True
+                        break
+                except Exception as e:
+                    log(f"   ⚠️  Échec sélecteur email {selector}: {str(e)[:50]}")
+                    continue
+
+            if not email_filled:
+                log("   ❌ Impossible de trouver le champ email", "error")
+                screenshot_path = os.path.join(SCRIPT_DIR, "hellofresh_no_email_field.png")
+                page.screenshot(path=screenshot_path)
+                log(f"   📸 Capture: {screenshot_path}", "error")
+                return []
+
+            time.sleep(0.5)
+
+            # Essayer différents sélecteurs pour le mot de passe
+            password_selectors = [
+                "input[type='password']",
+                "input[name='password']",
+                "input[id*='password']",
+                "input[data-test-id*='password']"
+            ]
+
+            password_filled = False
+            for selector in password_selectors:
+                try:
+                    if page.locator(selector).count() > 0:
+                        page.fill(selector, password, timeout=5000)
+                        log(f"   ✅ Mot de passe rempli avec sélecteur: {selector}")
+                        password_filled = True
+                        break
+                except Exception as e:
+                    log(f"   ⚠️  Échec sélecteur password {selector}: {str(e)[:50]}")
+                    continue
+
+            if not password_filled:
+                log("   ❌ Impossible de trouver le champ mot de passe", "error")
+                screenshot_path = os.path.join(SCRIPT_DIR, "hellofresh_no_password_field.png")
+                page.screenshot(path=screenshot_path)
+                log(f"   📸 Capture: {screenshot_path}", "error")
+                return []
+
+            time.sleep(0.5)
+
             # Cliquer sur le bouton de connexion
-            page.click("button[type='submit']")
-            
+            log("🔑 Tentative de connexion...", "always")
+            submit_selectors = [
+                "button[type='submit']",
+                "button:has-text('Se connecter')",
+                "button:has-text('Connexion')",
+                "button:has-text('Log in')",
+                "button[data-test-id*='submit']",
+                "input[type='submit']"
+            ]
+
+            button_clicked = False
+            for selector in submit_selectors:
+                try:
+                    if page.locator(selector).count() > 0:
+                        page.click(selector, timeout=5000)
+                        log(f"   ✅ Bouton cliqué avec sélecteur: {selector}")
+                        button_clicked = True
+                        break
+                except Exception as e:
+                    log(f"   ⚠️  Échec sélecteur bouton {selector}: {str(e)[:50]}")
+                    continue
+
+            if not button_clicked:
+                log("   ❌ Impossible de trouver le bouton de connexion", "error")
+                screenshot_path = os.path.join(SCRIPT_DIR, "hellofresh_no_submit_button.png")
+                page.screenshot(path=screenshot_path)
+                log(f"   📸 Capture: {screenshot_path}", "error")
+                return []
+
             # Attendre que l'URL change
-            log("⏳ Attente de la connexion...")
+            log("⏳ Attente de la connexion...", "always")
+            time.sleep(3)
+
             try:
                 page.wait_for_url("**/my-account/**", timeout=15000)
-                log("✅ Connecté\n")
+                log("✅ Connecté\n", "always")
             except:
-                time.sleep(3)
+                time.sleep(2)
                 current_url = page.url
-                
-                if '/my-account/' in current_url:
-                    log("✅ Connecté\n")
+                log(f"   URL actuelle: {current_url}")
+
+                if '/my-account/' in current_url or '/gated/' in current_url:
+                    log("✅ Connecté\n", "always")
                 else:
                     log("❌ Échec de connexion", "error")
+                    log(f"   URL finale: {current_url}", "error")
+                    screenshot_path = os.path.join(SCRIPT_DIR, "hellofresh_login_failed.png")
+                    page.screenshot(path=screenshot_path)
+                    log(f"   📸 Capture: {screenshot_path}", "error")
                     return []
             
             # Récupérer les recettes de la SEMAINE ACTUELLE
