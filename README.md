@@ -128,6 +128,31 @@ Puis lancer sans paramètre :
 
 > ⚠️ **Note** : Le magic link expire après quelques heures. Tu devras en récupérer un nouveau à chaque utilisation.
 
+### 🖥️ Interface graphique (macOS)
+
+Pour une utilisation encore plus simple, deux interfaces graphiques sont disponibles :
+
+**Option 1 : Interface Python/tkinter (recommandé)**
+
+```bash
+python3 gui_mac.py
+```
+
+Interface complète avec :
+- Champ pour coller le magic link
+- Sélection de la semaine (actuelle / prochaine / +2)
+- Logs en temps réel
+- Gestion automatique du venv
+
+**Option 2 : AppleScript natif**
+
+Double-clic sur `HelloFreshToMealie.applescript` dans le Finder :
+- Dialogue natif macOS
+- Lance automatiquement le Terminal
+- Plus léger mais moins de feedback
+
+### 📊 Sortie du script
+
 **Mode silencieux (par défaut) :**
 ```
 ✅ Meal plan créé pour semaine 45 (6 recettes) en 12.3s
