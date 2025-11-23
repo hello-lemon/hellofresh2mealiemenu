@@ -24,11 +24,12 @@ end if
 -- Convertir les choix en offsets
 set weekOffsets to {}
 repeat with weekChoice in selectedWeeks
-	if weekChoice is "Semaine actuelle" then
+	set weekText to contents of weekChoice
+	if weekText is "Semaine actuelle" then
 		set end of weekOffsets to "0"
-	else if weekChoice is "Semaine prochaine" then
+	else if weekText is "Semaine prochaine" then
 		set end of weekOffsets to "1"
-	else if weekChoice is "Dans 2 semaines" then
+	else if weekText is "Dans 2 semaines" then
 		set end of weekOffsets to "2"
 	end if
 end repeat
