@@ -428,18 +428,28 @@ def main(magic_link_arg=None, week_offset=0):
         print("❌ Aucune recette matchée")
         return
     
-    # Calculer la SEMAINE SUIVANTE (W+1)
+    # Calculer la semaine cible pour Mealie
+    # HelloFresh livre en fin de semaine W, on mange pendant la semaine W+1
+    # Donc: recettes HelloFresh W+offset → planning Mealie pour semaine W+offset+1
     today = datetime.now()
-    next_monday = today + timedelta(days=(7 - today.weekday()))
-    next_sunday = next_monday + timedelta(days=6)
-    
-    log(f"📅 Planning semaine {next_monday.isocalendar()[1]} ({next_monday.strftime('%d/%m')} - {next_sunday.strftime('%d/%m')})\n")
+
+    # Calculer le prochain lundi (début de la semaine suivante)
+    days_until_next_monday = (7 - today.weekday()) % 7
+    if days_until_next_monday == 0:
+        days_until_next_monday = 7
+    next_monday = today + timedelta(days=days_until_next_monday)
+
+    # Ajouter le week_offset pour obtenir la semaine cible
+    target_monday_date = next_monday + timedelta(weeks=week_offset)
+    target_sunday = target_monday_date + timedelta(days=6)
+
+    log(f"📅 Planning semaine {target_monday_date.isocalendar()[1]} ({target_monday_date.strftime('%d/%m')} - {target_sunday.strftime('%d/%m')})\n", "always")
     
     # Supprimer les meal plans existants
-    delete_week_mealplans(next_monday, next_sunday)
-    
+    delete_week_mealplans(target_monday_date, target_sunday)
+
     # Créer le nouveau meal plan
-    created = create_meal_plan(matched_ids, next_monday)
+    created = create_meal_plan(matched_ids, target_monday_date)
     
     elapsed = time.time() - start_time
     
@@ -449,7 +459,7 @@ def main(magic_link_arg=None, week_offset=0):
         print("="*80)
         print(f"\n🌐 Vérifie ton planning: {MEALIE_URL}/g/home/mealplan\n")
     else:
-        print(f"✅ Meal plan créé pour semaine {next_monday.isocalendar()[1]} ({created} recettes) en {elapsed:.1f}s")
+        print(f"✅ Meal plan créé pour semaine {target_monday_date.isocalendar()[1]} ({created} recettes) en {elapsed:.1f}s")
 
 if __name__ == "__main__":
     # Gestion des arguments de ligne de commande
