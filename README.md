@@ -128,6 +128,24 @@ Puis lancer sans paramètre :
 
 > ⚠️ **Note** : Le magic link expire après quelques heures. Tu devras en récupérer un nouveau à chaque utilisation.
 
+### 🚀 Planifier plusieurs semaines d'un coup
+
+Le magic link ne dure que quelques heures, alors autant planifier plusieurs semaines en une fois !
+
+**Ligne de commande :**
+```bash
+# Planifier semaines actuelle + prochaine
+./run.sh -m "ton_magic_link" --weeks 0,1
+
+# Planifier semaines prochaine + dans 2 semaines
+./run.sh -m "ton_magic_link" --weeks 1,2
+
+# Planifier 3 semaines d'un coup
+./run.sh -m "ton_magic_link" --weeks 0,1,2
+```
+
+> 💡 Cette fonctionnalité évite de devoir redemander un magic link à chaque fois !
+
 ### 🖥️ Interface graphique (macOS)
 
 Pour une utilisation encore plus simple, deux interfaces graphiques sont disponibles :
@@ -140,7 +158,7 @@ python3 gui_mac.py
 
 Interface complète avec :
 - Champ pour coller le magic link
-- Sélection de la semaine (actuelle / prochaine / +2)
+- **Sélection multiple de semaines** (checkboxes)
 - Logs en temps réel
 - Gestion automatique du venv
 
@@ -148,6 +166,7 @@ Interface complète avec :
 
 Double-clic sur `HelloFreshToMealie.applescript` dans le Finder :
 - Dialogue natif macOS
+- **Sélection multiple de semaines** avec Cmd+clic
 - Lance automatiquement le Terminal
 - Plus léger mais moins de feedback
 

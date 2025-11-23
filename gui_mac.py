@@ -50,13 +50,14 @@ class HelloFreshGUI:
         self.magic_link_entry.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 15))
         self.magic_link_entry.focus()
 
-        # Sélection de la semaine
+        # Sélection des semaines (checkboxes pour multi-sélection)
         week_frame = ttk.Frame(main_frame)
         week_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 20))
 
-        ttk.Label(week_frame, text="Semaine:", font=('Helvetica', 11, 'bold')).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Label(week_frame, text="Semaines à planifier (cocher une ou plusieurs):",
+                 font=('Helvetica', 11, 'bold')).pack(anchor=tk.W, pady=(0, 5))
 
-        self.week_var = tk.IntVar(value=0)
+        self.week_vars = {}
         weeks = [
             ("Actuelle (cette semaine)", 0),
             ("Prochaine (semaine suivante)", 1),
@@ -64,8 +65,9 @@ class HelloFreshGUI:
         ]
 
         for text, value in weeks:
-            ttk.Radiobutton(week_frame, text=text, variable=self.week_var,
-                           value=value).pack(anchor=tk.W, pady=2)
+            var = tk.BooleanVar(value=(value == 0))  # Cocher la semaine 0 par défaut
+            self.week_vars[value] = var
+            ttk.Checkbutton(week_frame, text=text, variable=var).pack(anchor=tk.W, pady=2)
 
         # Bouton de lancement
         self.run_button = ttk.Button(main_frame, text="▶️  Lancer le script",
@@ -116,24 +118,39 @@ class HelloFreshGUI:
             if not result:
                 return
 
+        # Récupérer les semaines cochées
+        selected_weeks = [week for week, var in self.week_vars.items() if var.get()]
+
+        if not selected_weeks:
+            messagebox.showerror("Erreur", "Veuillez cocher au moins une semaine")
+            return
+
         # Désactiver le bouton pendant l'exécution
         self.run_button.config(state='disabled', text="⏳ En cours...")
         self.log_text.delete(1.0, tk.END)
 
         # Lancer dans un thread séparé
-        week = self.week_var.get()
-        thread = threading.Thread(target=self._run_script_thread, args=(magic_link, week))
+        thread = threading.Thread(target=self._run_script_thread, args=(magic_link, selected_weeks))
         thread.daemon = True
         thread.start()
 
-    def _run_script_thread(self, magic_link, week):
+    def _run_script_thread(self, magic_link, selected_weeks):
         """Exécuter le script dans un thread séparé"""
         try:
             self.log(f"🚀 Lancement du script...\n")
-            self.log(f"📅 Semaine: {week} (0=actuelle, 1=prochaine, etc.)\n")
 
-            # Construire la commande
-            cmd = [SCRIPT_PATH, "-m", magic_link, "-w", str(week)]
+            # Afficher les semaines sélectionnées
+            week_labels = {0: "actuelle", 1: "prochaine", 2: "+2 semaines"}
+            weeks_str = ", ".join([week_labels.get(w, str(w)) for w in sorted(selected_weeks)])
+            self.log(f"📅 Semaines: {weeks_str}\n")
+
+            # Construire la commande avec --weeks si plusieurs semaines
+            if len(selected_weeks) > 1:
+                weeks_arg = ",".join(map(str, sorted(selected_weeks)))
+                cmd = [SCRIPT_PATH, "-m", magic_link, "--weeks", weeks_arg]
+            else:
+                # Une seule semaine, utiliser -w
+                cmd = [SCRIPT_PATH, "-m", magic_link, "-w", str(selected_weeks[0])]
 
             # Lancer le processus
             process = subprocess.Popen(
