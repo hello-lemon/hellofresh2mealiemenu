@@ -474,8 +474,10 @@ Exemples:
   # Semaine prochaine
   ./run.sh -m "https://click.bnlx.hellofresh.link/..." -w 1
 
-  # Dans 2 semaines
-  ./run.sh -m "https://click.bnlx.hellofresh.link/..." -w 2
+  # Planifier plusieurs semaines d'un coup (même magic link)
+  ./run.sh -m "https://click.bnlx.hellofresh.link/..." --weeks 0,1
+  ./run.sh -m "https://click.bnlx.hellofresh.link/..." --weeks 1,2
+  ./run.sh -m "https://click.bnlx.hellofresh.link/..." --weeks 0,1,2
 
   # Utiliser le magic link du fichier config.yaml
   ./run.sh
@@ -495,10 +497,28 @@ Exemples:
         help='Décalage de semaines (0=actuelle, 1=prochaine, etc.)'
     )
 
+    parser.add_argument(
+        '--weeks',
+        type=str,
+        help='Liste de semaines à planifier séparées par des virgules (ex: 0,1,2)'
+    )
+
     args = parser.parse_args()
 
     try:
-        main(magic_link_arg=args.magic_link, week_offset=args.week)
+        # Si --weeks est fourni, planifier plusieurs semaines
+        if args.weeks:
+            week_offsets = [int(w.strip()) for w in args.weeks.split(',')]
+            print(f"📅 Planification de {len(week_offsets)} semaine(s) : {', '.join(map(str, week_offsets))}\n")
+
+            for i, week_offset in enumerate(week_offsets, 1):
+                if i > 1:
+                    print("\n" + "="*80 + "\n")
+                print(f"📌 Semaine {week_offset} ({i}/{len(week_offsets)})")
+                main(magic_link_arg=args.magic_link, week_offset=week_offset)
+        else:
+            # Comportement classique avec -w
+            main(magic_link_arg=args.magic_link, week_offset=args.week)
     except KeyboardInterrupt:
         print("\n⚠️  Interrompu")
     except Exception as e:
